@@ -60,8 +60,8 @@
 #include "ggml_weights.hpp"
 #include "kimodo_decode.h"
 #include "motion_io.h"
-#include "noise.h"
 #include "motionbricks/motionbricks.h"
+#include "noise.h"
 #include "pump/pump.h"
 #include "rd_compute.h"
 #include "retarget.h"
@@ -163,7 +163,8 @@ std::vector<std::string> split(const std::string &s, char sep) {
 }
 
 // --- models ------------------------------------------------------------------------------
-enum Model : int { KIMODO = 0, MBRICKS = 1 };
+enum Model : int { KIMODO = 0,
+	MBRICKS = 1 };
 const char *kModelNames[] = { "kimodo_soma", "motionbricks_g1" };
 constexpr float kFps = 30.f;
 
@@ -196,14 +197,14 @@ struct Clip {
 	int frames = 0;
 	int joints = 0;
 	int steps = 0;
-	size_t root_off = 0;  // frames x 3
+	size_t root_off = 0; // frames x 3
 	size_t local_off = 0; // frames x joints x 9
 	size_t raw_off = 0, raw_n = 0; // Kimodo: the sampler's output, frames x D
-	size_t rest_off = 0;  // joints x 3 rest offsets from the parent
+	size_t rest_off = 0; // joints x 3 rest offsets from the parent
 	size_t parent_off = 0; // into g_ipool
-	size_t names_off = 0;  // into g_names (joints entries)
-	int retargeted = 0;    // 1: rt_* hold the clip on the avatar
-	size_t rt_off = 0;     // frames x ROLE_COUNT x 12
+	size_t names_off = 0; // into g_names (joints entries)
+	int retargeted = 0; // 1: rt_* hold the clip on the avatar
+	size_t rt_off = 0; // frames x ROLE_COUNT x 12
 	size_t rt_deg_off = 0; // frames x ROLE_COUNT, the avatar's angles (degrees)
 };
 std::vector<Clip> g_clips;
@@ -213,7 +214,8 @@ std::vector<int> g_ipool;
 std::vector<std::string> g_names;
 // The job queue: (kind, clip). GENERATE runs the model and then, when the
 // avatar is known, the retarget; RETARGET only the retarget.
-enum Kind : int { GENERATE = 0, RETARGET = 1 };
+enum Kind : int { GENERATE = 0,
+	RETARGET = 1 };
 std::deque<std::pair<int, int>> g_queue;
 
 size_t push_floats(const float *p, size_t n) {
@@ -451,9 +453,15 @@ bool mb_ok(mb_status s, const char *what, const char *errbuf, std::string &err) 
 std::string mb_style_for(const std::string &prompt) {
 	std::string p = prompt;
 	std::transform(p.begin(), p.end(), p.begin(), [](unsigned char ch) { return char(std::tolower(ch)); });
-	if (p.find("danc") != std::string::npos) return "walk_happy_dance";
-	if (p.find("idle") != std::string::npos || p.find("stand") != std::string::npos) return "idle";
-	if (p.find("walk") != std::string::npos) return "walk";
+	if (p.find("danc") != std::string::npos) {
+		return "walk_happy_dance";
+	}
+	if (p.find("idle") != std::string::npos || p.find("stand") != std::string::npos) {
+		return "idle";
+	}
+	if (p.find("walk") != std::string::npos) {
+		return "walk";
+	}
 	return "";
 }
 
@@ -484,17 +492,27 @@ bool run_mbricks(Clip &c, std::string &err) {
 	}
 	g_prog.phase = "streaming MotionBricks weights";
 	if (g_mb == nullptr) {
-		if (!mb_ok(mb_runtime_options_create(&g_mb_opts, eb, sizeof eb), "options", eb, err)) return false;
-		if (!mb_ok(mb_model_load(mb_bundle().c_str(), g_mb_opts, &g_mb, eb, sizeof eb), "model_load", eb, err)) return false;
+		if (!mb_ok(mb_runtime_options_create(&g_mb_opts, eb, sizeof eb), "options", eb, err)) {
+			return false;
+		}
+		if (!mb_ok(mb_model_load(mb_bundle().c_str(), g_mb_opts, &g_mb, eb, sizeof eb), "model_load", eb, err)) {
+			return false;
+		}
 		logf_("motionbricks: %s loaded", mb_bundle().c_str());
 	}
 	mb_style *st = nullptr;
 	mb_agent *agent = nullptr;
 	mb_command *cmd = nullptr;
 	auto cleanup = [&] {
-		if (cmd) mb_command_free(cmd);
-		if (agent) mb_agent_free(agent);
-		if (st) mb_style_free(st);
+		if (cmd) {
+			mb_command_free(cmd);
+		}
+		if (agent) {
+			mb_agent_free(agent);
+		}
+		if (st) {
+			mb_style_free(st);
+		}
 	};
 	if (!mb_ok(mb_style_load(g_mb, mb_style_path(style).c_str(), &st, eb, sizeof eb), "style_load", eb, err) ||
 			!mb_ok(mb_agent_create(g_mb, &agent, eb, sizeof eb), "agent", eb, err) ||
@@ -544,7 +562,9 @@ bool run_mbricks(Clip &c, std::string &err) {
 		++plans;
 		g_prog.i = int64_t(roots.size() / 3);
 		if (take == 0 || !mb_ok(mb_agent_advance(agent, uint32_t(take), eb, sizeof eb), "advance", eb, err)) {
-			if (take == 0) err = "planner returned no frames";
+			if (take == 0) {
+				err = "planner returned no frames";
+			}
 			cleanup();
 			return false;
 		}
@@ -948,7 +968,9 @@ static Variant motion_avatar(String names, PackedArray<int32_t> parents, PackedA
 	}
 	auto role_bone = [&](const char *role) -> int {
 		for (size_t j = 0; j < J; ++j) {
-			if (role_of[j] == role) return int(j);
+			if (role_of[j] == role) {
+				return int(j);
+			}
 		}
 		return -1;
 	};

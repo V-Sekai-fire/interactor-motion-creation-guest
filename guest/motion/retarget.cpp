@@ -75,10 +75,18 @@ const char *role_name(int role) {
 
 uint32_t rung_mask(int rung) {
 	uint32_t m = (1u << kLimbRoles) - 1u;
-	if (rung >= 1) m |= 1u << HIPS;
-	if (rung >= 2) m |= 1u << SPINE;
-	if (rung >= 3) m |= (1u << CHEST) | (1u << NECK);
-	if (rung >= 4) m |= (1u << L_FOOT) | (1u << R_FOOT);
+	if (rung >= 1) {
+		m |= 1u << HIPS;
+	}
+	if (rung >= 2) {
+		m |= 1u << SPINE;
+	}
+	if (rung >= 3) {
+		m |= (1u << CHEST) | (1u << NECK);
+	}
+	if (rung >= 4) {
+		m |= (1u << L_FOOT) | (1u << R_FOOT);
+	}
 	return m;
 }
 

@@ -71,13 +71,13 @@ struct Skeleton {
 
 // A role's measured flexion axis on one skeleton.
 struct Axis {
-	int joint = -1;   // the joint that bends
-	int end = -1;     // the chain end whose travel is measured
-	int local = -1;   // 0, 1, 2: the joint's local x, y, z
+	int joint = -1; // the joint that bends
+	int end = -1; // the chain end whose travel is measured
+	int local = -1; // 0, 1, 2: the joint's local x, y, z
 	float sign = 1.f; // +1 or -1: positive rotation bends the limb
-	float travel_mm[3] = { 0, 0, 0 };   // |end displacement| for 30 deg about each local axis
-	float forward_mm[3] = { 0, 0, 0 };  // its component along forward
-	float up_mm[3] = { 0, 0, 0 };       // its component along up
+	float travel_mm[3] = { 0, 0, 0 }; // |end displacement| for 30 deg about each local axis
+	float forward_mm[3] = { 0, 0, 0 }; // its component along forward
+	float up_mm[3] = { 0, 0, 0 }; // its component along up
 	bool tie = false; // two axes moved the end forward within 20%: the one that also lifts it won
 };
 
@@ -108,7 +108,7 @@ void axis_angle_matrix(const float axis[3], float angle, float out[9]);
 // rest-local translation), the target angles (degrees) and the source angles.
 struct Retargeted {
 	int frames = 0;
-	std::vector<float> local;      // frames x ROLE_COUNT x 12
+	std::vector<float> local; // frames x ROLE_COUNT x 12
 	std::vector<float> target_deg; // frames x ROLE_COUNT
 	std::vector<float> source_deg; // frames x ROLE_COUNT
 };
