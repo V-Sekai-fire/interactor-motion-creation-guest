@@ -57,11 +57,19 @@ public:
 	std::vector<component> components;
 	~neural_runtime() {
 		for (component &c : components) {
-			if (c.buffer) ggml_backend_buffer_free(c.buffer);
-			if (c.gguf) gguf_free(c.gguf);
-			if (c.context) ggml_free(c.context);
+			if (c.buffer) {
+				ggml_backend_buffer_free(c.buffer);
+			}
+			if (c.gguf) {
+				gguf_free(c.gguf);
+			}
+			if (c.context) {
+				ggml_free(c.context);
+			}
 		}
-		if (backend) ggml_backend_free(backend);
+		if (backend) {
+			ggml_backend_free(backend);
+		}
 	}
 };
 
@@ -107,13 +115,18 @@ ggml_backend_t neural_backend(const neural_runtime &runtime) noexcept {
 ggml_tensor *neural_weight(const neural_runtime &runtime, std::string_view component, std::string_view name) noexcept {
 	const auto found = std::find_if(runtime.components.begin(), runtime.components.end(),
 			[&](const neural_runtime::component &item) { return item.name == component; });
-	if (found == runtime.components.end()) return nullptr;
+	if (found == runtime.components.end()) {
+		return nullptr;
+	}
 	std::string owned(name);
-	if (auto *direct = ggml_get_tensor(found->context, owned.c_str())) return direct;
+	if (auto *direct = ggml_get_tensor(found->context, owned.c_str())) {
+		return direct;
+	}
 	if (owned.size() >= 64U) {
 		const std::string needle = "self_attn.";
-		if (const auto position = owned.find(needle); position != std::string::npos)
+		if (const auto position = owned.find(needle); position != std::string::npos) {
 			owned.replace(position, needle.size(), "attn.");
+		}
 	}
 	return ggml_get_tensor(found->context, owned.c_str());
 }

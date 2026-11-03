@@ -37,11 +37,20 @@ bool uint_key(gguf_context *g, const char *key, uint64_t &out) {
 		return false;
 	}
 	switch (gguf_get_kv_type(g, k)) {
-		case GGUF_TYPE_UINT32: out = gguf_get_val_u32(g, k); return true;
-		case GGUF_TYPE_UINT64: out = gguf_get_val_u64(g, k); return true;
-		case GGUF_TYPE_INT32: out = uint64_t(gguf_get_val_i32(g, k)); return true;
-		case GGUF_TYPE_INT64: out = uint64_t(gguf_get_val_i64(g, k)); return true;
-		default: return false;
+		case GGUF_TYPE_UINT32:
+			out = gguf_get_val_u32(g, k);
+			return true;
+		case GGUF_TYPE_UINT64:
+			out = gguf_get_val_u64(g, k);
+			return true;
+		case GGUF_TYPE_INT32:
+			out = uint64_t(gguf_get_val_i32(g, k));
+			return true;
+		case GGUF_TYPE_INT64:
+			out = uint64_t(gguf_get_val_i64(g, k));
+			return true;
+		default:
+			return false;
 	}
 }
 
@@ -90,10 +99,18 @@ kimodo::expected<std::unique_ptr<ggml_motion_weights>, std::string> ggml_motion_
 }
 
 ggml_motion_weights::~ggml_motion_weights() {
-	if (buffer_) ggml_backend_buffer_free(buffer_);
-	if (gguf_) gguf_free(gguf_);
-	if (context_) ggml_free(context_);
-	if (backend_) ggml_backend_free(backend_);
+	if (buffer_) {
+		ggml_backend_buffer_free(buffer_);
+	}
+	if (gguf_) {
+		gguf_free(gguf_);
+	}
+	if (context_) {
+		ggml_free(context_);
+	}
+	if (backend_) {
+		ggml_backend_free(backend_);
+	}
 }
 
 ggml_tensor *ggml_motion_weights::tensor(std::string_view name) const {
@@ -102,7 +119,9 @@ ggml_tensor *ggml_motion_weights::tensor(std::string_view name) const {
 
 kimodo::expected<std::vector<float>, std::string> ggml_motion_weights::f32_values(std::string_view name) const {
 	auto *value = tensor(name);
-	if (!value || value->type != GGML_TYPE_F32) return kimodo::unexpected("missing F32 GGML tensor: " + std::string(name));
+	if (!value || value->type != GGML_TYPE_F32) {
+		return kimodo::unexpected("missing F32 GGML tensor: " + std::string(name));
+	}
 	std::vector<float> result(static_cast<size_t>(ggml_nelements(value)));
 	ggml_backend_tensor_get(value, result.data(), 0, result.size() * sizeof(float));
 	return result;

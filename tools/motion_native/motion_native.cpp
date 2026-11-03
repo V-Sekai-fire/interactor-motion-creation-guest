@@ -47,7 +47,9 @@ namespace {
 
 std::vector<float> read_f32(const fs::path &p) {
 	std::ifstream in(p, std::ios::binary | std::ios::ate);
-	if (!in) throw std::runtime_error("cannot read " + p.string());
+	if (!in) {
+		throw std::runtime_error("cannot read " + p.string());
+	}
 	const auto n = in.tellg();
 	std::vector<float> v(size_t(n) / sizeof(float));
 	in.seekg(0);
@@ -58,20 +60,30 @@ std::vector<float> read_f32(const fs::path &p) {
 void write_f32(const fs::path &p, const std::vector<float> &v) {
 	std::ofstream out(p, std::ios::binary | std::ios::trunc);
 	out.write(reinterpret_cast<const char *>(v.data()), std::streamsize(v.size() * sizeof(float)));
-	if (!out) throw std::runtime_error("cannot write " + p.string());
+	if (!out) {
+		throw std::runtime_error("cannot write " + p.string());
+	}
 }
 
 int embed(int argc, char **argv) {
-	if (argc < 5) throw std::runtime_error("embed BUNDLE OUTDIR key=prompt ...");
+	if (argc < 5) {
+		throw std::runtime_error("embed BUNDLE OUTDIR key=prompt ...");
+	}
 	auto enc = kimodo::detail::llm_text_encoder::load(argv[2]);
-	if (!enc) throw std::runtime_error(enc.error());
+	if (!enc) {
+		throw std::runtime_error(enc.error());
+	}
 	fs::create_directories(argv[3]);
 	for (int i = 4; i < argc; ++i) {
 		const std::string kv = argv[i];
 		const size_t eq = kv.find('=');
-		if (eq == std::string::npos) throw std::runtime_error("expected key=prompt, got " + kv);
+		if (eq == std::string::npos) {
+			throw std::runtime_error("expected key=prompt, got " + kv);
+		}
 		auto e = (*enc)->encode(kv.substr(eq + 1));
-		if (!e) throw std::runtime_error(e.error());
+		if (!e) {
+			throw std::runtime_error(e.error());
+		}
 		write_f32(fs::path(argv[3]) / (kv.substr(0, eq) + ".f32"), std::vector<float>(e->begin(), e->end()));
 		std::printf("embed %s '%s' e[0..2] %.9g %.9g %.9g\n", kv.substr(0, eq).c_str(), kv.substr(eq + 1).c_str(),
 				(*e)[0], (*e)[1], (*e)[2]);
@@ -80,14 +92,20 @@ int embed(int argc, char **argv) {
 }
 
 int kimodo_run(int argc, char **argv) {
-	if (argc != 8) throw std::runtime_error("kimodo MOTION.gguf EMB.f32 SECONDS SEED STEPS OUTDIR");
+	if (argc != 8) {
+		throw std::runtime_error("kimodo MOTION.gguf EMB.f32 SECONDS SEED STEPS OUTDIR");
+	}
 	const auto emb = read_f32(argv[3]);
 	const double seconds = std::stod(argv[4]);
 	const uint64_t seed = std::stoull(argv[5]);
 	const unsigned steps = unsigned(std::stoul(argv[6]));
-	if (emb.size() != 4096) throw std::runtime_error("embedding is not 4096 floats");
+	if (emb.size() != 4096) {
+		throw std::runtime_error("embedding is not 4096 floats");
+	}
 	auto w = kimodo::detail::ggml_motion_weights::load(argv[2]);
-	if (!w) throw std::runtime_error(w.error());
+	if (!w) {
+		throw std::runtime_error(w.error());
+	}
 	const auto *skel = kimodo::detail::find_skeleton((*w)->skeleton_key());
 	const size_t D = (*w)->motion_dim(), J = skel->joints();
 	const size_t frames = size_t(std::lround(seconds * 30.0));
@@ -98,20 +116,27 @@ int kimodo_run(int argc, char **argv) {
 	std::printf("kimodo %zu frames, %u steps, seed %llu, noise[0..2] %.9g %.9g %.9g\n", frames, steps,
 			(unsigned long long)seed, noise[0], noise[1], noise[2]);
 	auto sampled = kimodo::detail::sample_motion_from_noise(**w, noise, emb, frames, steps, 2.f, 2.f);
-	if (!sampled) throw std::runtime_error(sampled.error());
+	if (!sampled) {
+		throw std::runtime_error(sampled.error());
+	}
 	auto gm = (*w)->f32_values("stats.global_root.mean"), gs = (*w)->f32_values("stats.global_root.std");
 	auto bm = (*w)->f32_values("stats.body.mean"), bs = (*w)->f32_values("stats.body.std");
-	if (!gm || !gs || !bm || !bs) throw std::runtime_error("missing stats");
+	if (!gm || !gs || !bm || !bs) {
+		throw std::runtime_error("missing stats");
+	}
 	std::vector<float> root, local;
 	motion::kimodo_decode::decode(sampled->data(), frames, J, skel->parents.data(), gm->data(), gs->data(), bm->data(),
 			bs->data(), root, local);
 	std::vector<float> xf(frames * J * 12);
-	for (size_t f = 0; f < frames; ++f)
+	for (size_t f = 0; f < frames; ++f) {
 		for (size_t j = 0; j < J; ++j) {
 			float *o = &xf[(f * J + j) * 12];
 			std::memcpy(o, &local[(f * J + j) * 9], 9 * sizeof(float));
-			for (int k = 0; k < 3; ++k) o[9 + k] = skel->parents[j] < 0 ? root[f * 3 + size_t(k)] : skel->offsets[j][size_t(k)];
+			for (int k = 0; k < 3; ++k) {
+				o[9 + k] = skel->parents[j] < 0 ? root[f * 3 + size_t(k)] : skel->offsets[j][size_t(k)];
+			}
 		}
+	}
 	fs::create_directories(argv[7]);
 	write_f32(fs::path(argv[7]) / "raw.f32", *sampled);
 	write_f32(fs::path(argv[7]) / "transforms.f32", xf);
@@ -120,7 +145,9 @@ int kimodo_run(int argc, char **argv) {
 }
 
 void check(mb_status s, const char *what, const char *eb) {
-	if (s != MB_OK) throw std::runtime_error(std::string(what) + ": " + mb_status_string(s) + " -- " + eb);
+	if (s != MB_OK) {
+		throw std::runtime_error(std::string(what) + ": " + mb_status_string(s) + " -- " + eb);
+	}
 }
 
 // The library's public output is XYZW; converted once here to the matrix the
@@ -139,7 +166,9 @@ void xyzw_matrix(const float *q, float *m) {
 }
 
 int mbricks_run(int argc, char **argv) {
-	if (argc != 7) throw std::runtime_error("mbricks BUNDLE STYLE.mbstyle SECONDS SEED OUTDIR");
+	if (argc != 7) {
+		throw std::runtime_error("mbricks BUNDLE STYLE.mbstyle SECONDS SEED OUTDIR");
+	}
 	char eb[512] = { 0 };
 	const double seconds = std::stod(argv[4]);
 	const uint64_t seed = std::stoull(argv[5]);
@@ -190,7 +219,9 @@ int mbricks_run(int argc, char **argv) {
 		}
 		mb_motion_free(m);
 		++plans;
-		if (take == 0) throw std::runtime_error("planner returned no frames");
+		if (take == 0) {
+			throw std::runtime_error("planner returned no frames");
+		}
 		check(mb_agent_advance(agent, uint32_t(take), eb, sizeof eb), "advance", eb);
 	}
 	const size_t F = roots.size() / 3;
@@ -203,14 +234,16 @@ int mbricks_run(int argc, char **argv) {
 				"neutral", eb);
 	}
 	std::vector<float> xf(F * J * 12);
-	for (size_t f = 0; f < F; ++f)
+	for (size_t f = 0; f < F; ++f) {
 		for (size_t j = 0; j < J; ++j) {
 			float *o = &xf[(f * J + j) * 12];
 			std::memcpy(o, &local[(f * J + j) * 9], 9 * sizeof(float));
 			const int p = parent[j];
-			for (int k = 0; k < 3; ++k)
+			for (int k = 0; k < 3; ++k) {
 				o[9 + k] = p < 0 ? roots[f * 3 + size_t(k)] : neutral[j * 3 + size_t(k)] - neutral[size_t(p) * 3 + size_t(k)];
+			}
 		}
+	}
 	fs::create_directories(argv[6]);
 	write_f32(fs::path(argv[6]) / "transforms.f32", xf);
 	std::printf("mbricks %zu frames x %u joints from %d plans, seed %llu\n", F, J, plans, (unsigned long long)seed);
@@ -223,7 +256,9 @@ int mbricks_run(int argc, char **argv) {
 }
 
 int compare(int argc, char **argv) {
-	if (argc != 4 && argc != 5) throw std::runtime_error("compare A.f32 B.f32 [tolerance]");
+	if (argc != 4 && argc != 5) {
+		throw std::runtime_error("compare A.f32 B.f32 [tolerance]");
+	}
 	const double tol = argc == 5 ? std::stod(argv[4]) : -1.0;
 	const auto a = read_f32(argv[2]), b = read_f32(argv[3]);
 	if (a.size() != b.size()) {
@@ -259,10 +294,18 @@ int compare(int argc, char **argv) {
 
 int main(int argc, char **argv) try {
 	const std::string cmd = argc > 1 ? argv[1] : "";
-	if (cmd == "embed") return embed(argc, argv);
-	if (cmd == "kimodo") return kimodo_run(argc, argv);
-	if (cmd == "mbricks") return mbricks_run(argc, argv);
-	if (cmd == "compare") return compare(argc, argv);
+	if (cmd == "embed") {
+		return embed(argc, argv);
+	}
+	if (cmd == "kimodo") {
+		return kimodo_run(argc, argv);
+	}
+	if (cmd == "mbricks") {
+		return mbricks_run(argc, argv);
+	}
+	if (cmd == "compare") {
+		return compare(argc, argv);
+	}
 	std::fprintf(stderr, "usage: motion_native embed|kimodo|mbricks|compare ...\n");
 	return 2;
 } catch (const std::exception &e) {
